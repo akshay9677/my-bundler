@@ -4,9 +4,9 @@ This project is a simple javascript module bundler, it bundles multiple js codes
 
 ## Configuration
 
-- **Input:** Entry point of your file
-- **Output:** Target file, where your bundle will be generated
-- **Options:**
+- **<code>input</code>:** Entry point of your file
+- **<code>output</code>:** Target file, where your bundle will be generated
+- **<code>options</code>:**
 
 | Option   | Type                 | Description                     |
 | -------- | -------------------- | ------------------------------- |
