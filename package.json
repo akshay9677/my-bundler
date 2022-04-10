@@ -1,0 +1,17 @@
+{
+  "name": "my-bundler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bundler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/core": "^7.17.9",
+    "chalk": "^4.0.0",
+    "terser": "^5.12.1"
+  }
+}
