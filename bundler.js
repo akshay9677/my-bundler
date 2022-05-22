@@ -1,129 +1,82 @@
-const babel = require("@babel/core");
-const fs = require("fs");
-const path = require("path");
-const chalk = require("chalk");
-const terser = require("terser");
+const commandLineArgs = require("command-line-args");
+const { exit } = require("process");
+const builder = require("./builder");
+// Reading command line arguments...
+const optionDefinitions = [
+  { name: "entryFile", type: String },
+  { name: "output", alias: "o", type: String },
+  { name: "mode", alias: "m", type: String },
+];
+const options = commandLineArgs(optionDefinitions);
 
-async function builder({ input, output, options }) {
-  console.log(chalk.blueBright("Bundling your code..."));
-  const moduleGraph = createModuleGraph(input);
-  const bundledCode = bundle(moduleGraph);
-
-  const { minify = false, format = "esm" } = options || {};
-  let code;
-  if (minify) {
-    let minifiedCode = await terser.minify(bundledCode);
-    code = minifiedCode.code;
-  } else {
-    code = bundledCode;
-  }
-
-  //format
-  if (format === "iife") {
-    code = `(()=>{${code}})()`;
-  }
-
-  writeFileSyncRecursive(output, code, "utf-8");
-  console.log(chalk.green.bold(`Created ${output}`));
+if (options.hasOwnProperty("entryFile") && options.entryFile == null) {
+  console.log(
+    "Please provide the `path` of the entry file with the --input command."
+  );
+  exit();
 }
-
-function writeFileSyncRecursive(filename, content, charset) {
-  const folders = filename.split(path.sep).slice(0, -1);
-  if (folders.length) {
-    // create folder path if it doesn't exist
-    folders.reduce((last, folder) => {
-      const folderPath = last ? last + path.sep + folder : folder;
-      if (!fs.existsSync(folderPath)) {
-        fs.mkdirSync(folderPath);
-      }
-      return folderPath;
-    });
-  }
-  fs.writeFileSync(filename, content, charset);
+if (options.hasOwnProperty("output") && options?.output == null) {
+  console.log("Please provide a `path` with the --output command");
+  exit();
 }
-
-// module graph
-function createModuleGraph(input) {
-  return new ModuleGraph(input);
-}
-
-function resolveRequest(requester, requestedPath) {
-  return path.join(path.dirname(requester), requestedPath);
-}
-
-class ModuleGraph {
-  constructor(input) {
-    this.path = input;
-    this.content = fs.readFileSync(input, "utf-8");
-    this.ast = babel.parseSync(this.content);
-    this.dependencies = this.getDependencies();
-  }
-
-  getDependencies() {
-    return this.ast.program.body
-      .filter((node) => node.type === "ImportDeclaration")
-      .map((node) => node.source.value)
-      .map((currentPath) => resolveRequest(this.path, currentPath))
-      .map((absolutePath) => createModuleGraph(absolutePath));
+if (options.hasOwnProperty("mode") && options?.mode == null) {
+  console.log(
+    "Please provide a `mode` with the --mode command! Valid modes include esm, iife and minified."
+  );
+  exit();
+} else if (options.hasOwnProperty("mode") && options?.mode != null) {
+  const mode = options.mode;
+  if (mode != "esm" && mode != "minified" && mode != "iife") {
+    console.log("Invalid mode! Valide modes include esm, iife and minified.");
+    exit();
   }
 }
 
-// bundling
-
-function bundle(graph) {
-  let modules = collectModules(graph);
-  let code = "";
-  for (var i = modules.length - 1; i >= 0; i--) {
-    let module = modules[i];
-    const t = babel.transformFromAstSync(module.ast, module.content, {
-      ast: true,
-      plugins: [
-        function () {
-          return {
-            visitor: {
-              ImportDeclaration(path) {
-                path.remove();
-              },
-              ExportDefaultDeclaration(path) {
-                path.remove();
-              },
-            },
-          };
-        },
-      ],
-    });
-    code += `${t.code}\n`;
-  }
-  return code;
-}
-
-function collectModules(graph) {
-  const modules = [];
-  collect(graph, modules);
-  return modules;
-
-  function collect(module, modules) {
-    modules.push(module);
-    module.dependencies.forEach((dependency) => collect(dependency, modules));
-  }
-}
-
+// TODO: Remove existing /dist files first...
+const defaultEntryFile = "./src/app.js";
+const defaultOutputPath = "./dist/";
+const entryFile = () => {
+  return options?.entryFile ?? defaultEntryFile;
+};
+const output = (fileName) => {
+  return options?.output
+    ? options.output + fileName
+    : defaultOutputPath + fileName;
+};
 // esm
-builder({
-  input: "./test/app.js",
-  output: "./dist/esm.js",
-});
-
-// iife
-builder({
-  input: "./test/app.js",
-  output: "./dist/iife.js",
-  options: { format: "iife" },
-});
-
-// minify
-builder({
-  input: "./test/app.js",
-  output: "./dist/minified.js",
-  options: { minify: true },
-});
+const mode = options.mode;
+if (mode == "esm") {
+  builder({
+    input: entryFile(),
+    output: output("esm.js"),
+  });
+} else if (mode == "minified") {
+  // minify
+  builder({
+    input: entryFile(),
+    output: output("minified.js"),
+    options: { minify: true },
+  });
+} else if (mode == "iife") {
+  builder({
+    input: entryFile(),
+    output: output("iife.js"),
+    options: { format: "iife" },
+  });
+} else {
+  builder({
+    input: entryFile(),
+    output: output("esm.js"),
+  });
+  // minify
+  builder({
+    input: entryFile(),
+    output: output("minified.js"),
+    options: { minify: true },
+  });
+  builder({
+    input: entryFile(),
+    output: output("iife.js"),
+    options: { format: "iife" },
+  });
+}
