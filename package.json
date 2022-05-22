@@ -4,12 +4,15 @@
   "description": "",
   "main": "bundler.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "bundle": "node bundler.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+
+  },
+  "devDependencies": {
     "@babel/core": "^7.17.9",
     "chalk": "^4.0.0",
     "terser": "^5.12.1"
